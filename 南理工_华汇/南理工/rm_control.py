@@ -10,7 +10,7 @@ class RobotArmController():
             print(f"成功连接到机械臂，IP地址：{ip_address}")
         else:
             print("连接机械臂失败。")
-    def init_arm(self, pose,joint, v=35, r=0,  speed_gripper=500, height_lift=0, speed_lift=30, block=True,timeout=30):
+    def init_arm(self, pose,joint, v=35, r=0,  speed_gripper=50, height_lift=0, speed_lift=30, port=1, baudrate=115200,block=True,timeout=30):
         """初始化机械臂"""
         # 机械臂回归初始位置
         self.set_joint_en_state(7,True, block=True)
@@ -22,7 +22,7 @@ class RobotArmController():
         # 升降柱到初始位置
         #self.robot.Set_Lift_Height( height_lift, speed_lift, block=True)
         #print("升降机初始化完成。")
-        self.DH_init(port=1, baudrate=115200,block=True)
+        self.DH_init(port=port, baudrate=baudrate,block=True)
 
     def DH_init(self,port=1, baudrate=115200,block=True):
         """
@@ -37,6 +37,8 @@ class RobotArmController():
         # 完全初始化（重新标定最大最小行程）
         self.write_Single_Register(1, 0x0100, 0xA5, 1, True)
         print("完全初始化行程")
+        time.sleep(2)
+        self.write_Single_Register(1, 0x0100,1, 1, True)
         time.sleep(2)
         print("回零完成")
 
@@ -593,6 +595,215 @@ class RobotArmController():
             #机械臂左移4cm
             #机械臂后移10cm
 
+    def control_green_button_dh(self, target_pose, v=10, r=0,speed=50,force=30, block=True,timeout=10,port=1,device=1):
+        """
+        根据识别位姿设计绿色按钮动作
+        """
+        print(f"绿色按钮动作开始。")
+        target_pose1=[target_pose[0],target_pose[1]+0.05,target_pose[2]+0.02,target_pose[3],target_pose[4],target_pose[5]]
+        target_pose2=[target_pose[0],target_pose[1]-0.025,target_pose[2]+0.02,target_pose[3],target_pose[4],target_pose[5]]
+        target_pose3=[target_pose[0],target_pose[1]+0.05,target_pose[2]+0.02,target_pose[3],target_pose[4],target_pose[5]]
+        self.move_to_target_sideway_with_splitting(target_pose1, v, r, block)
+        print("已到达目标点前方。")
+        #闭合夹爪
+        self.control_gripper_dh("close",speed=speed,force=force,block=block,timeout=timeout,port=port,device=device)
+        print("夹爪已闭合。")
+        self.move_to_target_sideway_with_splitting(target_pose2, v, r, block)
+        print("按钮成功按下。")
+        time.sleep(0.5)
+        self.move_to_target_sideway_with_splitting(target_pose3, v, r, block)
+        print("操作已完成")
+        # print("操作已完成")
+
+
+    def control_red_button_dh(self, target_pose, v=10, r=0,speed=50,force=30, block=True,timeout=10,port=1,device=1):
+        """
+        根据识别位姿设计红色按钮动作
+        """
+        print(f"红色按钮动作开始。")
+        target_pose1=[target_pose[0],target_pose[1]+0.05,target_pose[2]+0.02,target_pose[3],target_pose[4],target_pose[5]]
+        target_pose2=[target_pose[0],target_pose[1]-0.025,target_pose[2]+0.02,target_pose[3],target_pose[4],target_pose[5]]
+        target_pose3=[target_pose[0],target_pose[1]+0.05,target_pose[2]+0.02,target_pose[3],target_pose[4],target_pose[5]]
+        self.move_to_target_sideway_with_splitting(target_pose1, v, r, block)
+        print("已到达目标点前方。")
+        #闭合夹爪
+        self.control_gripper_dh("close",speed=speed,force=force,block=block,timeout=timeout,port=port,device=device)
+        print("夹爪已闭合。")
+        self.move_to_target_sideway_with_splitting(target_pose2, v, r, block)
+        print("按钮成功按下。")
+        time.sleep(0.5)
+        self.move_to_target_sideway_with_splitting(target_pose3, v, r, block)
+        print("操作已完成")
+        # print("操作已完成")
+    
+    def control_black_button_dh(self, target_pose, v=10, r=0,speed=50,force=30, block=True,timeout=10,port=1,device=1):
+        """
+        根据识别位姿设计黑色旋钮动作
+        """
+        print(f"黑色旋钮动作开始。")
+        target_pose1=[target_pose[0],target_pose[1]+0.05,target_pose[2]+0.02,target_pose[3],target_pose[4],target_pose[5]]
+        target_pose2=[target_pose[0],target_pose[1]-0.014,target_pose[2]+0.02,target_pose[3],target_pose[4],target_pose[5]]
+        self.move_to_target_sideway_with_splitting(target_pose1, v, r, block)
+        print("已到达目标点前方。")
+        #张开夹爪
+        self.control_gripper_dh("pose", position=500,speed=speed,force=force,block=block,timeout=timeout,port=port,device=device)
+        self.move_to_target_sideway_with_splitting(target_pose2, v, r, block)
+        time.sleep(0.5)
+        #闭合夹爪
+        self.control_gripper_dh("close",speed=speed,force=force,block=block,timeout=timeout,port=port,device=device)
+        #旋转第6关节
+        #获取当前关节角度
+        _,joint_state = self.robot.Get_Joint_Degree()
+        print(f"当前关节角度为{joint_state}")
+        joint_state_left = [joint_state[0],joint_state[1],joint_state[2],joint_state[3],joint_state[4],joint_state[5]+45]
+        joint_state_right = [joint_state[0],joint_state[1],joint_state[2],joint_state[3],joint_state[4],joint_state[5]-45]
+        joint_init = [joint_state[0],joint_state[1],joint_state[2],joint_state[3],joint_state[4],joint_state[5]]
+        self.movej_cmd(joint_state_left, v, block)
+        time.sleep(0.5)
+        self.movej_cmd(joint_state_right, v, block)
+        time.sleep(0.5)
+        self.movej_cmd(joint_init, v, block)
+        #松夹爪
+        time.sleep(0.5)
+        self.control_gripper_dh("pose", position=500, speed=speed,force=force,block=block,timeout=timeout,port=port,device=device)
+        self.move_to_target_sideway_with_splitting(target_pose1, v, r, block)
+        print("操作已完成")
+
+    def control_Red_oggle_switch_dh(self, target_pose, action="close",v=10, r=0,speed=50,force=30, block=True,timeout=10,port=1,device=1):   
+        """
+        控制红色拨片开关
+        """
+        #到拨片开关前方
+        if action == "close":
+            target_pose12=[target_pose[0],target_pose[1]+0.05,target_pose[2]-0.003,target_pose[3],target_pose[4],target_pose[5]]
+            target_pose11=[target_pose[0],target_pose[1]+0.005,target_pose[2]-0.003,target_pose[3],target_pose[4],target_pose[5]]
+            target_pose0=[target_pose[0],target_pose[1]+0.05,target_pose[2]-0.003,target_pose[3],target_pose[4],target_pose[5]]
+            target_pose1=[target_pose[0]+0.02,target_pose[1]-0.01,target_pose[2]-0.025,target_pose[3],target_pose[4],target_pose[5]]
+            target_pose2=[target_pose[0]+0.02,target_pose[1]-0.01,target_pose[2]+0.015,target_pose[3],target_pose[4],target_pose[5]]
+            target_pose3=[target_pose[0]+0.002,target_pose[1]-0.01,target_pose[2]+0.015,target_pose[3],target_pose[4],target_pose[5]]
+            target_pose4=[target_pose[0]+0.02,target_pose[1],target_pose[2]+0.015,target_pose[3],target_pose[4],target_pose[5]]
+            target_pose5=[target_pose[0]+0.02,target_pose[1]+0.04,target_pose[2]+0.015,target_pose[3],target_pose[4],target_pose[5]]
+            target_pose6=[target_pose[0],target_pose[1]+0.05,target_pose[2]+0.032,target_pose[3],target_pose[4],target_pose[5]]
+            target_pose7=[target_pose[0],target_pose[1]+0.01,target_pose[2]+0.032,target_pose[3],target_pose[4],target_pose[5]]
+            
+            self.move_to_target_sideway_with_splitting(target_pose12, v, r, block)
+            print("已到达target12。")
+            self.control_gripper_dh("pose",  position=250,speed=speed,force=force,block=block,timeout=timeout,port=port,device=device)
+            print("夹爪张开。")
+            self.move_to_target_sideway_with_splitting(target_pose11, v, r, block)
+            print("已到达target11。")
+            self.control_gripper_dh("pose", position=100,speed=speed,force=force,block=block,timeout=timeout,port=port,device=device)
+            print("夹爪闭合。")
+             #关节六正向旋转180度
+            _,joint_state0 = self.robot.Get_Joint_Degree()
+            print(f"当前关节角度为{joint_state0}")
+            joint_angle0 = [joint_state0[0],joint_state0[1],joint_state0[2],joint_state0[3],joint_state0[4],joint_state0[5]+80]
+            self.movej_cmd(joint_angle0, v, block)
+            self.control_gripper_dh("pose",position=250, speed=speed,force=force,block=block,timeout=timeout,port=port,device=device)
+            arm_state0 = self.get_current_arm_state(); ee_pos0 = arm_state0[2]
+            target_pose13=[ee_pos0[0],ee_pos0[1]+0.04,ee_pos0[2],ee_pos0[3],ee_pos0[4],ee_pos0[5]]
+            #机械臂后移10cm
+            self.move_to_target_sideway_with_splitting(target_pose13, v, r, block)
+            _,joint_state1 = self.robot.Get_Joint_Degree()
+            print(f"当前关节角度为{joint_state1}")
+            joint_angle1 = [joint_state1[0],joint_state1[1],joint_state1[2],joint_state1[3],joint_state1[4],joint_state1[5]-80]
+            self.movej_cmd(joint_angle1, v, block)
+
+
+            self.move_to_target_sideway_with_splitting(target_pose0, v, r, block)
+            
+            #闭合夹爪
+            self.control_gripper_dh("close",speed=speed,force=force,block=block,timeout=timeout,port=port,device=device)
+            self.move_to_target_sideway_with_splitting(target_pose1, v, r, block)
+            print("已到达target1。")
+            #机械臂上移两厘米
+            self.move_to_target_sideway_with_splitting(target_pose2, v, r, block)
+            print("已到达target2。")
+            #机械臂右移1厘米
+            self.move_to_target_sideway_with_splitting(target_pose3, v, r, block)
+            print("已到达target3。")
+            #机械臂上移1厘米
+            self.move_to_target_sideway_with_splitting(target_pose4, v, r, block)
+            print("已到达target4。")
+            #机械臂右移1厘米
+            self.move_to_target_sideway_with_splitting(target_pose5, v, r, block)
+            print("已到达target5。")
+            #机械臂上移1厘米
+            self.move_to_target_sideway_with_splitting(target_pose6, v, r, block)
+            print("已到达target6。")
+            self.control_gripper_dh("open",speed=speed,force=force,block=block,timeout=timeout,port=port,device=device)
+            print("夹爪打开。")
+            #机械臂右移1厘米
+            self.move_to_target_sideway_with_splitting(target_pose7, v, r, block)
+            print("已到达target7。")
+            #打开夹爪
+            self.control_gripper_dh("close",speed=speed,force=force,block=block,timeout=timeout,port=port,device=device)
+            #关节六正向旋转180度
+            _,joint_state2 = self.robot.Get_Joint_Degree()
+            print(f"当前关节角度为{joint_state2}")
+            joint_angle2 = [joint_state2[0],joint_state2[1],joint_state2[2],joint_state2[3],joint_state2[4],joint_state2[5]+180]
+            self.movej_cmd(joint_angle2, v, block)
+            self.control_gripper_dh("open",speed=speed,force=force,block=block,timeout=timeout,port=port,device=device)
+            arm_state2 = self.get_current_arm_state(); ee_pos2 = arm_state2[2]
+            target_pose3=[ee_pos2[0],ee_pos2[1]+0.04,ee_pos2[2],ee_pos2[3],ee_pos2[4],ee_pos2[5]]
+            #机械臂后移10cm
+            self.move_to_target_sideway_with_splitting(target_pose3, v, r, block)
+            _,joint_state1 = self.robot.Get_Joint_Degree()
+            print(f"当前关节角度为{joint_state1}")
+            joint_angle1 = [joint_state1[0],joint_state1[1],joint_state1[2],joint_state1[3],joint_state1[4],joint_state1[5]-180]
+            self.movej_cmd(joint_angle1, v, block)
+
+            
+        if action == "open":
+            target_pose1=[target_pose[0],target_pose[1]+0.05,target_pose[2]+0.032,target_pose[3],target_pose[4],target_pose[5]]
+            target_pose2=[target_pose[0],target_pose[1]+0.01,target_pose[2]+0.032,target_pose[3],target_pose[4],target_pose[5]]
+            
+
+            #闭合夹爪
+            self.control_gripper_dh("open",speed=speed,force=force,block=block,timeout=timeout,port=port,device=device)
+            #首先，去到螺帽位置，扭旋钮
+            self.move_to_target_sideway_with_splitting(target_pose1, v, r, block)
+            print("已到达目标点附近。")
+            #打开夹爪
+            self.control_gripper_dh("open",speed=speed,force=force,block=block,timeout=timeout,port=port,device=device)
+            #机械臂前移10cm
+            self.move_to_target_sideway_with_splitting(target_pose2, v, r, block)
+            #闭合夹爪
+            self.control_gripper_dh("close",speed=speed,force=force,block=block,timeout=timeout,port=port,device=device)
+            #机械臂逆时针旋转180度
+            _,joint_state = self.robot.Get_Joint_Degree()
+            print(f"当前关节角度为{joint_state}")
+            joint_angle = [joint_state[0],joint_state[1],joint_state[2],joint_state[3],joint_state[4],joint_state[5]-180]
+            #这里做这个赋值是因为joint——state为7关节，我们只要前6个数据
+            joint_angle1 = [joint_state[0],joint_state[1],joint_state[2],joint_state[3],joint_state[4],joint_state[5]]
+            self.movej_cmd(joint_angle, v, block)
+            print("旋钮已拧开。")
+            #打开夹爪
+            self.control_gripper_dh("open",speed=speed,force=force,block=block,timeout=timeout,port=port,device=device)
+            arm_state = self.get_current_arm_state(); ee_pos = arm_state[2]
+            target_pose3=[ee_pos[0],ee_pos[1]+0.04,ee_pos[2],ee_pos[3],ee_pos[4],ee_pos[5]]
+            #机械臂后移10cm
+            self.move_to_target_sideway_with_splitting(target_pose3, v, r, block)
+            _,joint_state1 = self.robot.Get_Joint_Degree()
+            print(f"当前关节角度为{joint_state}")
+            joint_angle1 = [joint_state1[0],joint_state1[1],joint_state1[2],joint_state1[3],joint_state1[4],joint_state1[5]+180]
+            self.movej_cmd(joint_angle1, v, block)
+            #self.move_to_target_sideway_with_splitting(target_pose4, v, r, block)
+            #关闭夹爪
+            self.control_gripper_dh("close",speed=speed,force=force,block=block,timeout=timeout,port=port,device=device)
+            #目标点正前方并右移2cm后退10cm
+            target_pose4=[target_pose[0]-0.02,target_pose[1]+0.03,target_pose[2]+0.015,target_pose[3],target_pose[4],target_pose[5]]
+            target_pose5=[target_pose[0]-0.02,target_pose[1],target_pose[2]+0.015,target_pose[3],target_pose[4],target_pose[5]]
+            target_pose6=[target_pose[0]+0.03,target_pose[1],target_pose[2]+0.015,target_pose[3],target_pose[4],target_pose[5]]
+            target_pose6=[target_pose[0]+0.01,target_pose[1]+0.05,target_pose[2]+0.015,target_pose[3],target_pose[4],target_pose[5]]
+            self.move_to_target_sideway_with_splitting(target_pose4, v, r, block)
+            time.sleep(0.5)
+            #机械臂前移10cm 
+            self.move_to_target_sideway_with_splitting(target_pose5, v, r, block)
+            time.sleep(0.5)
+            #机械臂左移4cm
+            self.move_to_target_sideway_with_splitting(target_pose6, v, r, block)
+            time.sleep(0.5) 
 
     def get_current_arm_state(self):
         '''
@@ -643,12 +854,15 @@ class RobotArmController():
         self.write_Single_Register(port,0x0104,speed,device,block)    # 设置速度30%
         if action == "open":
             self.write_Single_Register(port,0x0103,1000,device,block)    # 打开夹爪
+            time.sleep(100/speed)
             print("大寰夹爪已打开。")
         elif action == "close":
             self.write_Single_Register(port,0x0103,0,device,block)    # 关闭夹爪
+            time.sleep(100/speed)
             print("大寰夹爪已关闭。")
         elif action == "pose":
             self.write_Single_Register(port,0x0103,position,device,block)    # 设置夹爪位置
+            time.sleep(100/speed)
             print(f"大寰夹爪已设置到 {position} 位置。")
         else:
             print("无效的夹爪动作。")
@@ -712,17 +926,18 @@ def main():
     
     init_joint = [84, 54, 121, 174, 86, 90]
     pos_init = [0.18, -0.54, 0.02, 1.57, -1.57, 0]
+    pos_init1 = [0.10, -0.54, 0.02, 1.57, -1.57, 0]
     arm = RobotArmController(ip_address="192.168.10.18", model=RM65)
     #切换工作坐标系
     #arm.change_work_frame(name="World")
-    print("切换到World坐标系")
+    #print("切换到World坐标系")
     #time.sleep(2)
     #切换工具坐标系
     #arm.change_tool_frame(name="grip")
     #print("切换到grip坐标系")
     
     #time.sleep(2)
-    #arm.init_arm( pos_init,init_joint, v=35, r=0,  speed_gripper=500, height_lift=0, speed_lift=30, block=True,timeout=30)
+    arm.init_arm( pos_init,init_joint, v=35, r=0,  speed_gripper=500, height_lift=0, speed_lift=30, block=True,timeout=30)
     # arm.set_Tool_Voltage(3, block=True)
     # # 初始化夹爪（此时才启动Modbus通讯）
     # arm.set_Modbus_Mode(port=1, baudrate=115200, timeout=3, block=True)
@@ -731,14 +946,47 @@ def main():
     # print("关闭io")
     # # 完全初始化（重新标定最大最小行程）
     # arm.write_Single_Register(1, 0x0100, 0xA5, 1, True)
-    # # print("完全初始化行程")
+    # # print("完全初始化行程"
     # time.sleep(10)
+    speed=50
+    force=50
+    block=True
+    timeout=10
+    port=1
+    device=1
     # arm.control_gripper_dh("close", speed=50, force=50,block=True, timeout=10,port=1,device=1)
+    # arm.control_gripper_dh("close",speed=speed,force=force,block=block,timeout=timeout,port=port,device=device)
     # time.sleep(2)
     # arm.control_gripper_dh("open", speed=50, force=50,block=True, timeout=10,port=1,device=1)
-    # time.sleep(2)
-    arm.control_gripper_dh("pose", speed=50, force=50, position=100, block=True, timeout=10,port=1,device=1)
-    #arm.set_Tool_Voltage(0, block=True)
+    # # time.sleep(2)
+    # arm.control_gripper_dh("pose", speed=100, force=50, position=500, block=True, timeout=10,port=1,device=1)
+    # arm.control_gripper_dh("open", speed=100, force=50,block=True, timeout=10,port=1,device=1)
+    # arm.control_gripper_dh("close", speed=100, force=50,block=True, timeout=10,port=1,device=1)
+    # arm.control_gripper_dh("open", speed=50, force=50,block=True, timeout=10,port=1,device=1)
+    # arm.control_gripper_dh(action="pose", position=250)
+    # arm.control_green_button_dh(pos_init1, v=10, r=0,speed=500,force=300, block=True)
+    # time.sleep(5)
+    arm.control_red_button_dh(pos_init1, v=10, r=0,speed=50,force=30, block=True)
+    time.sleep(5)
+    arm.control_black_button_dh(pos_init1, v=10, r=0,speed=50,force=30, block=True)
+    time.sleep(5)
+    arm.control_Red_oggle_switch_dh(pos_init1,action="close" ,v=10, r=0,speed=50,force=30, block=True)
+    time.sleep(5)
+    arm.control_Red_oggle_switch_dh(pos_init1,action="open",v=10, r=0,speed=50,force=30, block=True)
+    time.sleep(5)
+
+
+
+
+
+
+
+    arm.control_gripper_dh("close",speed=speed,force=force,block=block,timeout=timeout,port=port,device=device)
+
+
+
+
+    arm.set_Tool_Voltage(0, block=True)
     arm.shutdown()
 
 if __name__ == "__main__":

@@ -148,13 +148,13 @@ def adjust_button_pose(label_pose, offsets):
 
 
 # --------- 动作分发函数 ---------
-def perform_button_action(label_pose, btn_type, offsets,action_type="open", v=10, r=0, speed=500, force=300, block=True):
+def perform_button_action(label_pose, btn_type, offsets,action_type="open", v=10, r=0, speed=50, force=30, block=True):
     button_pose = adjust_button_pose(label_pose, offsets)
     dispatcher = {
-        'green_button': arm.control_green_button,
-        'red_button': arm.control_red_button,
-        'black_button': arm.control_black_button,
-        'red_toggle_switch': arm.control_Red_oggle_switch,
+        'green_button': arm.control_green_button_dh,
+        'red_button': arm.control_red_button_dh,
+        'black_button': arm.control_black_button_dh,
+        'red_toggle_switch': arm.control_Red_oggle_switch_dh,
     }
     action = dispatcher.get(btn_type)
     if not action:
@@ -167,14 +167,14 @@ def perform_button_action(label_pose, btn_type, offsets,action_type="open", v=10
         action(button_pose, v=v, r=r, speed=speed, force=force, block=block)
 
 
-def ocr_control_arm(target_label, action_type="open", v=10, r=0, speed=500, force=300, block=True):
+def ocr_control_arm(target_label, action_type="open", v=10, r=0, speed=50, force=30, block=True):
     label_pose, btn_type, offsets = ocr_detection(target_label)
     if btn_type is None:
         print("检测失败或未检测到标签")
         return
     print(f"标签位姿: {label_pose}, 类型: {btn_type}, 偏移: {offsets}")
     
-    perform_button_action(label_pose, btn_type, offsets, action_type=action_type ,v=10, r=0, speed=500, force=300, block=True)
+    perform_button_action(label_pose, btn_type, offsets, action_type=action_type ,v=10, r=0, speed=50, force=30, block=True)
     arm.movej_cmd(init_joint,v=10,r=0, block=True)
     arm.movej_p_cmd(pose=pos_init, v=10, r=0, block=True)
 
@@ -183,20 +183,20 @@ def main():
     try:
         arm.change_tool_frame(name="grip")
         arm.change_work_frame(name="World")
-        arm.movej_cmd(init_joint,v=10,r=0, block=True)
-        arm.init_arm(pose=pos_init, v=10, r=0, speed_gripper=500, height_lift=650, speed_lift=30, block=True)
+        #rm.movej_cmd(init_joint,v=10,r=0, block=True)
+        arm.init_arm(pose=pos_init,joint=init_joint, v=10, r=0, speed_gripper=50, height_lift=650, speed_lift=30, port=1, baudrate=115200,block=True)
         time.sleep(2)
-        ocr_control_arm("1CLP10", v=10, r=0, speed=500, force=300, block=True)
+        ocr_control_arm("1CLP10", v=10, r=0, speed=50, force=30, block=True)
         time.sleep(2)
-        ocr_control_arm("8CLP1",  v=10, r=0, speed=500, force=300, block=True)
+        ocr_control_arm("8CLP1",  v=10, r=0, speed=50, force=30, block=True)
         time.sleep(2)
-        ocr_control_arm("8LP1", action_type="open", v=10, r=0, speed=500, force=300, block=True)
+        ocr_control_arm("8LP1", action_type="open", v=10, r=0, speed=50, force=30, block=True)
         time.sleep(2)
-        ocr_control_arm("8LP1", action_type="close", v=10, r=0, speed=500, force=300, block=True)
+        ocr_control_arm("8LP1", action_type="close", v=10, r=0, speed=50, force=30, block=True)
         time.sleep(2)
-        ocr_control_arm("1CLP1",  v=10, r=0, speed=500, force=300, block=True)
+        ocr_control_arm("1CLP1",  v=10, r=0, speed=50, force=30, block=True)
         time.sleep(2)
-        ocr_control_arm("1CLP8",  v=10, r=0, speed=500, force=300, block=True)
+        ocr_control_arm("1CLP8",  v=10, r=0, speed=50, force=30, block=True)
     except KeyboardInterrupt:
         print("检测到Ctrl+C，急停机械臂并退出程序！")
         tar=arm.move_stop(block=True)  # 调用急停
